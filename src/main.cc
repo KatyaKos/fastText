@@ -92,7 +92,12 @@ void printPrintNgramsUsage() {
 
 void quantize(const std::vector<std::string>& args) {
   Args a = Args();
-  if (args.size() < 3) {
+  std::string subs;
+  if (args.size() == 3) {
+    subs = "";
+  } else if (args.size() == 4) {
+    subs = args[3];
+  } else {
     printQuantizeUsage();
     a.printHelp();
     exit(EXIT_FAILURE);
@@ -100,16 +105,17 @@ void quantize(const std::vector<std::string>& args) {
   a.parseArgs(args);
   FastText fasttext;
   // parseArgs checks if a->output is given.
-  fasttext.loadModel(a.output + ".bin");
+  fasttext.loadModel(a.output + ".bin", subs);
   fasttext.quantize(a);
   fasttext.saveModel(a.output + ".ftz");
   exit(0);
 }
 
 void printNNUsage() {
-  std::cout << "usage: fasttext nn <model> <k>\n\n"
-            << "  <model>      model filename\n"
-            << "  <k>          (optional; 10 by default) predict top k labels\n"
+  std::cout << "usage: fasttext nn <model> <k> <subwords>\n\n"
+            << "  <model>        model filename\n"
+            << "  <k>           (optional; 10 by default) predict top k labels\n"
+            << "  <subwords>    (optional; ngrams by default) file with subwords dictionary\n"
             << std::endl;
 }
 
@@ -129,7 +135,7 @@ void printDumpUsage() {
 void test(const std::vector<std::string>& args) {
   bool perLabel = args[1] == "test-label";
 
-  if (args.size() < 4 || args.size() > 6) {
+  if (args.size() < 4 || args.size() > 7) {
     perLabel ? printTestLabelUsage() : printTestUsage();
     exit(EXIT_FAILURE);
   }
@@ -138,9 +144,10 @@ void test(const std::vector<std::string>& args) {
   const auto& input = args[3];
   int32_t k = args.size() > 4 ? std::stoi(args[4]) : 1;
   real threshold = args.size() > 5 ? std::stof(args[5]) : 0.0;
+  std::string subs = args.size() > 6 ? args[6] : "";
 
   FastText fasttext;
-  fasttext.loadModel(model);
+  fasttext.loadModel(model, subs);
 
   Meter meter;
 
@@ -204,22 +211,25 @@ void printPredictions(
 }
 
 void predict(const std::vector<std::string>& args) {
-  if (args.size() < 4 || args.size() > 6) {
+  if (args.size() < 4 || args.size() > 7) {
     printPredictUsage();
     exit(EXIT_FAILURE);
   }
   int32_t k = 1;
   real threshold = 0.0;
+  std::string subs = "";
   if (args.size() > 4) {
     k = std::stoi(args[4]);
     if (args.size() == 6) {
       threshold = std::stof(args[5]);
+    } else  if (args.size() == 7) {
+      subs = args[6];
     }
   }
 
   bool printProb = args[1] == "predict-prob";
   FastText fasttext;
-  fasttext.loadModel(std::string(args[2]));
+  fasttext.loadModel(std::string(args[2]), subs);
 
   std::ifstream ifs;
   std::string infile(args[3]);
@@ -244,12 +254,13 @@ void predict(const std::vector<std::string>& args) {
 }
 
 void printWordVectors(const std::vector<std::string> args) {
-  if (args.size() != 3) {
+  if (args.size() > 4) {
     printPrintWordVectorsUsage();
     exit(EXIT_FAILURE);
   }
+  std::string subs = args.size() == 4 ? args[3] : "";
   FastText fasttext;
-  fasttext.loadModel(std::string(args[2]));
+  fasttext.loadModel(std::string(args[2]), subs);
   std::string word;
   Vector vec(fasttext.getDimension());
   while (std::cin >> word) {
@@ -260,12 +271,13 @@ void printWordVectors(const std::vector<std::string> args) {
 }
 
 void printSentenceVectors(const std::vector<std::string> args) {
-  if (args.size() != 3) {
+  if (args.size() > 4) {
     printPrintSentenceVectorsUsage();
     exit(EXIT_FAILURE);
   }
   FastText fasttext;
-  fasttext.loadModel(std::string(args[2]));
+  std::string subs = args.size() == 4 ? args[3] : "";
+  fasttext.loadModel(std::string(args[2]), subs);
   Vector svec(fasttext.getDimension());
   while (std::cin.peek() != EOF) {
     fasttext.getSentenceVector(std::cin, svec);
@@ -276,12 +288,13 @@ void printSentenceVectors(const std::vector<std::string> args) {
 }
 
 void printNgrams(const std::vector<std::string> args) {
-  if (args.size() != 4) {
+  if (args.size() > 5) {
     printPrintNgramsUsage();
     exit(EXIT_FAILURE);
   }
   FastText fasttext;
-  fasttext.loadModel(std::string(args[2]));
+  std::string subs = args.size() == 5 ? args[4] : "";
+  fasttext.loadModel(std::string(args[2]), subs);
 
   std::string word(args[3]);
   std::vector<std::pair<std::string, Vector>> ngramVectors =
@@ -296,16 +309,22 @@ void printNgrams(const std::vector<std::string> args) {
 
 void nn(const std::vector<std::string> args) {
   int32_t k;
+  std::string subs;
   if (args.size() == 3) {
     k = 10;
+    subs = "";
   } else if (args.size() == 4) {
     k = std::stoi(args[3]);
+    subs = "";
+  } else if (args.size() == 5) {
+    k = std::stoi(args[3]);
+    subs = args[4];
   } else {
     printNNUsage();
     exit(EXIT_FAILURE);
   }
   FastText fasttext;
-  fasttext.loadModel(std::string(args[2]));
+  fasttext.loadModel(std::string(args[2]), subs);
   std::string prompt("Query word? ");
   std::cout << prompt;
 
@@ -319,10 +338,16 @@ void nn(const std::vector<std::string> args) {
 
 void analogies(const std::vector<std::string> args) {
   int32_t k;
+  std::string subs;
   if (args.size() == 3) {
     k = 10;
+    subs = "";
   } else if (args.size() == 4) {
     k = std::stoi(args[3]);
+    subs = "";
+  } else if (args.size() == 5) {
+    k = std::stoi(args[3]);
+    subs = args[4];
   } else {
     printAnalogiesUsage();
     exit(EXIT_FAILURE);
@@ -333,7 +358,7 @@ void analogies(const std::vector<std::string> args) {
   FastText fasttext;
   std::string model(args[2]);
   std::cout << "Loading model " << model << std::endl;
-  fasttext.loadModel(model);
+  fasttext.loadModel(model, subs);
 
   std::string prompt("Query triplet (A - B + C)? ");
   std::string wordA, wordB, wordC;
@@ -381,7 +406,12 @@ void train(const std::vector<std::string> args) {
 }
 
 void dump(const std::vector<std::string>& args) {
-  if (args.size() < 4) {
+  std::string subs;
+  if (args.size() == 4) {
+    subs = "";
+  } else if (args.size() == 5) {
+    subs = args[4];
+  } else {
     printDumpUsage();
     exit(EXIT_FAILURE);
   }
@@ -390,7 +420,7 @@ void dump(const std::vector<std::string>& args) {
   std::string option = args[3];
 
   FastText fasttext;
-  fasttext.loadModel(modelPath);
+  fasttext.loadModel(modelPath, subs);
   if (option == "args") {
     fasttext.getArgs().dump(std::cout);
   } else if (option == "dict") {

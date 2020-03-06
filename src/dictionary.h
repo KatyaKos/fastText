@@ -46,13 +46,17 @@ class Dictionary {
 
   std::shared_ptr<Args> args_;
   std::vector<int32_t> word2int_;
+  std::vector<int32_t> subword2int_;
   std::vector<entry> words_;
+  std::vector<entry> subwords_;
 
   std::vector<real> pdiscard_;
   int32_t size_;
   int32_t nwords_;
+  int32_t nsubwords_;
   int32_t nlabels_;
   int64_t ntokens_;
+  bool isSubwords = false;
 
   int64_t pruneidx_size_;
   std::unordered_map<int32_t, int32_t> pruneidx_;
@@ -68,6 +72,7 @@ class Dictionary {
 
   explicit Dictionary(std::shared_ptr<Args>);
   explicit Dictionary(std::shared_ptr<Args>, std::istream&);
+  explicit Dictionary(std::shared_ptr<Args>, std::istream&, std::istream&);
   int32_t nwords() const;
   int32_t nlabels() const;
   int64_t ntokens() const;
@@ -90,6 +95,7 @@ class Dictionary {
   uint32_t hash(const std::string& str) const;
   void add(const std::string&);
   bool readWord(std::istream&, std::string&) const;
+  void readSubwords(std::istream&);
   void readFromFile(std::istream&);
   std::string getLabel(int32_t) const;
   void save(std::ostream&) const;

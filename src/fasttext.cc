@@ -202,7 +202,7 @@ void FastText::saveModel(const std::string& filename) {
   ofs.close();
 }
 
-void FastText::loadModel(const std::string& filename) {
+void FastText::loadModel(const std::string& filename, const std::string& subword_filename) {
   std::ifstream ifs(filename, std::ifstream::binary);
   if (!ifs.is_open()) {
     throw std::invalid_argument(filename + " cannot be opened for loading!");
@@ -210,7 +210,8 @@ void FastText::loadModel(const std::string& filename) {
   if (!checkModel(ifs)) {
     throw std::invalid_argument(filename + " has wrong file format!");
   }
-  loadModel(ifs);
+  int i = 0;
+  loadModel(ifs, subword_filename);
   ifs.close();
 }
 
@@ -228,7 +229,7 @@ void FastText::buildModel() {
   model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
 }
 
-void FastText::loadModel(std::istream& in) {
+void FastText::loadModel(std::istream& in, const std::string& subword_filename) {
   args_ = std::make_shared<Args>();
   input_ = std::make_shared<DenseMatrix>();
   output_ = std::make_shared<DenseMatrix>();
@@ -237,7 +238,17 @@ void FastText::loadModel(std::istream& in) {
     // backward compatibility: old supervised models do not use char ngrams.
     args_->maxn = 0;
   }
-  dict_ = std::make_shared<Dictionary>(args_, in);
+  if (subword_filename.size() != 0) {
+    std::ifstream ifsSubtokens(subword_filename);
+    if (!ifsSubtokens.is_open()) {
+      throw std::invalid_argument(
+          subword_filename + " cannot be opened for training!");
+    }
+    dict_ = std::make_shared<Dictionary>(args_, in, ifsSubtokens);
+  } else {
+    dict_ = std::make_shared<Dictionary>(args_, in);
+  }
+
 
   bool quant_input;
   in.read((char*)&quant_input, sizeof(bool));
@@ -728,6 +739,14 @@ void FastText::train(const Args& args) {
   if (!ifs.is_open()) {
     throw std::invalid_argument(
         args_->input + " cannot be opened for training!");
+  }
+  if (args_->subwords.size() != 0) {
+    std::ifstream ifsSubtokens(args_->subwords);
+    if (!ifsSubtokens.is_open()) {
+      throw std::invalid_argument(
+          args_->subwords + " cannot be opened for training!");
+    }
+    dict_->readSubwords(ifsSubtokens);
   }
   dict_->readFromFile(ifs);
   ifs.close();

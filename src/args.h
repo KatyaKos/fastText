@@ -30,6 +30,7 @@ class Args {
  public:
   Args();
   std::string input;
+  std::string subwords;
   std::string output;
   double lr;
   int lrUpdateRate;
