@@ -285,7 +285,7 @@ void Dictionary::readSubwords(std::istream& in) {
       std::cerr << "\rRead " << nsubwords_ / 1000000 << "M subwords" << std::flush;
     }
   }
-  std::cerr << "\rRead " << nsubwords_ << " subwords" << std::flush;
+  std::cerr << "\rRead " << nsubwords_ << " subwords" << std::endl;
 }
 
 void Dictionary::readFromFile(std::istream& in) {
